@@ -1,0 +1,12 @@
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+startCommand = "garmin-mcp"
+restartPolicyType = "ON_FAILURE"
+
+# Set in Railway dashboard (Variables):
+#   TRANSPORT=streamable-http
+#   GARMINTOKENS=/data/.garminconnect   (attach a volume at /data)
+# Generate tokens locally with `garmin-mcp-auth`, then upload the token files
+# to the volume — never bake credentials into the image.

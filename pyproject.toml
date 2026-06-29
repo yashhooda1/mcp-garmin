@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "garmin-mcp"
+version = "0.1.0"
+description = "MCP server to read Garmin activities and create/schedule structured workouts and training plans on Garmin Connect."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Yash Hooda" }]
+keywords = ["mcp", "garmin", "running", "training", "workouts", "claude"]
+dependencies = [
+    "mcp>=1.2",
+    "garminconnect>=0.3.6",
+    "garth>=0.4.45",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+garmin-mcp = "garmin_mcp.server:main"
+garmin-mcp-auth = "garmin_mcp.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/OWNER/garmin-mcp"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/garmin_mcp", "plans"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]

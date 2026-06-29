@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "garmin": {
+      "command": "garmin-mcp",
+      "env": {
+        "TRANSPORT": "stdio",
+        "GARMINTOKENS": "/Users/you/.garminconnect"
+      }
+    }
+  }
+}
