@@ -1,6 +1,6 @@
 # garmin-mcp
 
-[![ci](https://github.com/OWNER/garmin-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/garmin-mcp/actions/workflows/ci.yml)
+[![ci](https://github.com/yashhooda1/mcp-garmin/actions/workflows/ci.yml/badge.svg)](https://github.com/yashhooda1/mcp-garmin/actions/workflows/ci.yml)
 [![python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -44,7 +44,7 @@ design**; write access is scoped to workouts and the training calendar.
 ## Quick start
 
 ```bash
-git clone https://github.com/OWNER/garmin-mcp
+git clone https://github.com/yashhooda1/mcp-garmin
 cd garmin-mcp
 pip install -e ".[dev]"
 
