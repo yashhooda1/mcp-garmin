@@ -34,7 +34,14 @@ def login_interactive(mfa_prompt: Callable[[], str] = lambda: input("MFA code: "
     client.login()
     store = tokenstore()
     Path(store).mkdir(parents=True, exist_ok=True)
-    client.garth.dump(store)
+    # login() already persists tokens to GARMINTOKENS; this is belt-and-suspenders.
+    # garth client moved from `.garth` (old) to `.client` (garminconnect 0.3.6).
+    garth_client = getattr(client, "client", None) or getattr(client, "garth", None)
+    if garth_client is not None and hasattr(garth_client, "dump"):
+        try:
+            garth_client.dump(store)
+        except Exception as exc:
+            print(f"(note: token already saved by login; extra dump skipped — {exc})")
     return client
 
 
