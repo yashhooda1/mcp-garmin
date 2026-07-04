@@ -45,7 +45,7 @@ design**; write access is scoped to workouts and the training calendar.
 
 ```bash
 git clone https://github.com/yashhooda1/mcp-garmin
-cd garmin-mcp
+cd mcp-garmin
 pip install -e ".[dev]"
 
 # one-time login — caches tokens to $GARMINTOKENS (default ~/.garminconnect)
