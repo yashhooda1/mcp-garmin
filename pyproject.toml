@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [{ name = "Yash Hooda" }]
 keywords = ["mcp", "garmin", "running", "training", "workouts", "claude"]
 dependencies = [
-    "mcp>=1.2",
+    "mcp>=1.2,<2",
     "garminconnect>=0.3.6",
     "garth>=0.4.45",
     "pydantic>=2.0",
