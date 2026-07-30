@@ -42,6 +42,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+from garmin_mcp.plans import TrainingPlan
 from garmin_mcp.workouts import RepeatSpec, StepSpec, WorkoutSpec
 
 BLOCK_START = date(2026, 8, 3)      # Monday
@@ -325,19 +326,23 @@ WEEKS: list[dict[int, WorkoutSpec]] = [
 ]
 
 
-def build_plan(start: date | None = None) -> list[tuple[date, WorkoutSpec]]:
-    """Expand the block into (date, WorkoutSpec) pairs.
+PLAN_NAME = "Chevron Houston Marathon — sub-3 block"
+
+
+def build_plan(start: date | None = None) -> TrainingPlan:
+    """Expand the block into a TrainingPlan of (ISO date, WorkoutSpec) items.
 
     `start` must be a Monday; defaults to BLOCK_START (3 Aug 2026).
     """
     monday = start or BLOCK_START
     if monday.weekday() != 0:
         raise ValueError(f"start must be a Monday, got {monday} ({monday:%A})")
-    out: list[tuple[date, WorkoutSpec]] = []
+    items: list[tuple[str, WorkoutSpec]] = []
     for w, days in enumerate(WEEKS):
         for dow, spec in sorted(days.items()):
-            out.append((monday + timedelta(days=w * 7 + dow), spec))
-    return out
+            iso = (monday + timedelta(days=w * 7 + dow)).isoformat()
+            items.append((iso, spec))
+    return TrainingPlan(name=PLAN_NAME, items=items)
 
 
 def phase_of(week_index: int) -> str:
@@ -352,7 +357,7 @@ def phase_of(week_index: int) -> str:
 
 if __name__ == "__main__":  # dry run: python -m plans.houston
     plan = build_plan()
-    print(f"{len(plan)} sessions across {len(WEEKS)} weeks "
-          f"({plan[0][0]} -> {plan[-1][0]})")
-    for d, spec in plan:
-        print(f"{d:%Y-%m-%d} {d:%a}  {spec.name}")
+    print(f"{len(plan.items)} sessions across {len(WEEKS)} weeks "
+          f"({plan.items[0][0]} -> {plan.items[-1][0]})")
+    for iso, spec in plan.items:
+        print(f"{iso}  {spec.name}")
