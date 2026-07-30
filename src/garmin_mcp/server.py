@@ -141,6 +141,28 @@ def create_boulderthon_demo(dry_run: bool = True) -> dict:
     results = push_plan(get_client(), plan, replace=True)
     return {"plan": plan.name, "scheduled": len(results), "items": results}
 
+@mcp.tool()
+async def clear_scheduled(start_date: str, end_date: str, dry_run: bool = True) -> str:
+    """Unschedule every workout on the calendar in [start_date, end_date] (YYYY-MM-DD).
+
+    Destructive. Defaults to dry_run=True — call again with dry_run=False to commit.
+    Deletes calendar occurrences only; workout templates are left intact.
+    """
+    items = await _scheduled_between(start_date, end_date)
+    if not items:
+        return f"Nothing scheduled between {start_date} and {end_date}."
+
+    listing = "\n".join(f"  {i['date']}  {i['name']}" for i in items)
+    if dry_run:
+        return (f"Would unschedule {len(items)} workouts:\n{listing}\n\n"
+                f"Re-run with dry_run=False to commit.")
+
+    removed = 0
+    for i in items:
+        await _unschedule(i["schedule_id"])
+        removed += 1
+    return f"Unscheduled {removed} workouts between {start_date} and {end_date}."
+
 
 # --------------------------------------------------------------------------- #
 # entrypoint
