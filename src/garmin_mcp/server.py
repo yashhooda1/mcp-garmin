@@ -131,15 +131,14 @@ def create_training_plan(name: str, items: list, replace: bool = True,
 
 
 @mcp.tool()
-def create_boulderthon_demo(dry_run: bool = True) -> dict:
-    """Build (and optionally push) the bundled 13-week Boulderthon sub-3 plan."""
-    from plans.boulderthon import build_plan  # noqa: PLC0415
-
-    plan = build_plan()
+async def create_houston_block(start_date: str | None = None, dry_run: bool = True) -> str:
+    """Build + schedule Block 1 of the Chevron Houston Marathon plan
+    (base + 5K/10K sharpening, 7 weeks, 40-45 mpw, ATP-schedule aware)."""
+    from plans.houston import build_plan
+    plan = build_plan(date.fromisoformat(start_date) if start_date else None)
     if dry_run:
-        return {"plan": plan.name, "dry_run": True, "sessions": preview_plan(plan)}
-    results = push_plan(get_client(), plan, replace=True)
-    return {"plan": plan.name, "scheduled": len(results), "items": results}
+        return "\n".join(f"{d}  {s.name}" for d, s in preview_plan(plan))
+    return await push_plan(plan)
 
 @mcp.tool()
 async def clear_scheduled(start_date: str, end_date: str, dry_run: bool = True) -> str:
