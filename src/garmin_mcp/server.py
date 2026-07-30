@@ -3,20 +3,21 @@
 Tools (least-privilege):
   read   — list_activities, get_activity, get_athlete_zones, list_scheduled
   write  — create_workout, schedule_workout, delete_workout, unschedule_workout
-  plan   — create_training_plan, create_boulderthon_demo
+  plan   — create_training_plan, create_houston_block, clear_scheduled
 
 Activities are read-only: no tool creates, edits, or deletes an activity.
 """
 from __future__ import annotations
 
 import os
+from datetime import date
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
 
 from .auth import get_client
+from .plans import preview_plan, push_plan
 from .workouts import WorkoutSpec, compile_workout
-from .plans import push_plan, preview_plan
 
 mcp = FastMCP("garmin-mcp")
 
@@ -131,36 +132,68 @@ def create_training_plan(name: str, items: list, replace: bool = True,
 
 
 @mcp.tool()
-async def create_houston_block(start_date: str | None = None, dry_run: bool = True) -> str:
-    """Build + schedule Block 1 of the Chevron Houston Marathon plan
-    (base + 5K/10K sharpening, 7 weeks, 40-45 mpw, ATP-schedule aware)."""
+def create_houston_block(start_date: Optional[str] = None, replace: bool = True,
+                         dry_run: bool = True) -> dict:
+    """Build + schedule the full 24-week Chevron Houston Marathon block.
+
+    start_date must be a Monday ('YYYY-MM-DD'); defaults to 2026-08-03.
+    dry_run=True validates and reports without sending anything to Garmin.
+    """
     from plans.houston import build_plan
+
     plan = build_plan(date.fromisoformat(start_date) if start_date else None)
     if dry_run:
-        return "\n".join(f"{d}  {s.name}" for d, s in preview_plan(plan))
-    return await push_plan(plan)
+        return {"plan": plan.name, "dry_run": True, "sessions": preview_plan(plan)}
+    results = push_plan(get_client(), plan, replace=replace)
+    return {"plan": plan.name, "scheduled": len(results), "items": results}
+
+
+def _sched_id(item: dict):
+    """Garmin's scheduled-workout payload has drifted across versions."""
+    for k in ("scheduleId", "workoutScheduleId", "id"):
+        if item.get(k) is not None:
+            return item[k]
+    return None
+
+
+def _sched_date(item: dict) -> str:
+    for k in ("calendarDate", "date", "scheduledDate"):
+        if item.get(k):
+            return str(item[k])[:10]
+    return ""
+
+
+def _sched_name(item: dict) -> str:
+    w = item.get("workout") or {}
+    return w.get("workoutName") or item.get("workoutName") or "(unnamed)"
+
 
 @mcp.tool()
-async def clear_scheduled(start_date: str, end_date: str, dry_run: bool = True) -> str:
-    """Unschedule every workout on the calendar in [start_date, end_date] (YYYY-MM-DD).
+def clear_scheduled(start_date: str, end_date: str, dry_run: bool = True) -> dict:
+    """Unschedule every workout on the calendar in [start_date, end_date] inclusive.
 
     Destructive. Defaults to dry_run=True — call again with dry_run=False to commit.
-    Deletes calendar occurrences only; workout templates are left intact.
+    Removes calendar occurrences only; workout templates are left intact.
     """
-    items = await _scheduled_between(start_date, end_date)
-    if not items:
-        return f"Nothing scheduled between {start_date} and {end_date}."
+    client = get_client()
+    hits = []
+    for item in client.get_scheduled_workouts():
+        d = _sched_date(item)
+        if d and start_date <= d <= end_date and _sched_id(item) is not None:
+            hits.append({"date": d, "name": _sched_name(item),
+                         "schedule_id": _sched_id(item)})
+    hits.sort(key=lambda h: h["date"])
 
-    listing = "\n".join(f"  {i['date']}  {i['name']}" for i in items)
+    if not hits:
+        return {"range": [start_date, end_date], "found": 0, "unscheduled": 0}
     if dry_run:
-        return (f"Would unschedule {len(items)} workouts:\n{listing}\n\n"
-                f"Re-run with dry_run=False to commit.")
+        return {"range": [start_date, end_date], "found": len(hits),
+                "dry_run": True, "would_unschedule": hits}
 
-    removed = 0
-    for i in items:
-        await _unschedule(i["schedule_id"])
-        removed += 1
-    return f"Unscheduled {removed} workouts between {start_date} and {end_date}."
+    for h in hits:
+        client.unschedule_workout(h["schedule_id"])
+    return {"range": [start_date, end_date], "found": len(hits),
+            "unscheduled": len(hits), "items": hits}
 
 
 # --------------------------------------------------------------------------- #
