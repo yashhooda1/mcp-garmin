@@ -22,8 +22,6 @@ from __future__ import annotations
 
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field
-
 from garminconnect.workout import (
     ConditionType,
     ExecutableStep,
@@ -34,6 +32,7 @@ from garminconnect.workout import (
     WorkoutSegment,
     create_repeat_group,
 )
+from pydantic import BaseModel, Field
 
 M_PER_MILE = 1609.34
 M_PER_KM = 1000.0
