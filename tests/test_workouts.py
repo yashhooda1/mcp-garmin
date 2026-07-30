@@ -1,7 +1,12 @@
 """Offline tests: parsing, compilation, serialization. No Garmin network calls."""
 from garmin_mcp.workouts import (
-    RepeatSpec, StepSpec, WorkoutSpec,
-    compile_workout, parse_duration, parse_target, pace_to_mps,
+    RepeatSpec,
+    StepSpec,
+    WorkoutSpec,
+    compile_workout,
+    pace_to_mps,
+    parse_duration,
+    parse_target,
 )
 
 
