@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+dev = ["pytest>=8.0", "ruff>=0.6,<0.17"]
 
 [project.scripts]
 garmin-mcp = "garmin_mcp.server:main"
@@ -34,6 +34,11 @@ packages = ["src/garmin_mcp", "plans"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+# Pinned explicitly: relying on ruff's implicit defaults means a ruff release
+# can turn CI red without a single line of our code changing.
+select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
