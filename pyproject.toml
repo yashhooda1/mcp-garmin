@@ -13,7 +13,9 @@ authors = [{ name = "Yash Hooda" }]
 keywords = ["mcp", "garmin", "running", "training", "workouts", "claude"]
 dependencies = [
     "mcp>=1.2,<2",
-    "garminconnect>=0.3.6",
+    # 0.3.7 is the floor: StrengthWorkout, the strength step builders and the
+    # exercises table all landed there, and garmin_mcp.strength needs all three.
+    "garminconnect>=0.3.7",
     "garth>=0.4.45",
     "pydantic>=2.0",
 ]

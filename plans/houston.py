@@ -31,19 +31,34 @@ Structural constraints
     long-run duration over VO2 work.  Interval sessions exist to maintain
     turnover, not to build the goal.
 
+  * Two strength sessions a week are scheduled on the calendar, not left to
+    willpower: Tue and Thu, both quality days, so easy days stay easy and
+    nothing lands the day before Sunday's long run. Race weeks drop to a single
+    mobility reset — the habit survives, the load doesn't.
+  * Every session's description carries its fuelling and recovery line, and
+    `weekly_briefs()` returns the per-week nutrition/hydration/recovery block.
+
 Priority order when the flight schedule collapses a week:
     1. Sunday long run          (never cut — this is what buys sub-3)
     2. One quality session
-    3. Easy mileage
-    4. Lifts
+    3. Strength day A           (durability is what survives a 24-week block)
+    4. Easy mileage
 """
 
 from __future__ import annotations
 
 from datetime import date, timedelta
 
+from garmin_mcp.fueling import annotate, weekly_brief
 from garmin_mcp.plans import TrainingPlan
-from garmin_mcp.workouts import RepeatSpec, StepSpec, WorkoutSpec
+from garmin_mcp.strength import strength_for_week
+from garmin_mcp.workouts import (
+    M_PER_MILE,
+    RepeatSpec,
+    StepSpec,
+    WorkoutSpec,
+    parse_duration,
+)
 
 BLOCK_START = date(2026, 8, 3)      # Monday
 RACE_DAY = date(2027, 1, 17)        # Chevron Houston Marathon
@@ -328,6 +343,96 @@ WEEKS: list[dict[int, WorkoutSpec]] = [
 
 PLAN_NAME = "Chevron Houston Marathon — sub-3 block"
 
+# ---------------------------------------------------------------------------
+# Strength, fuelling, recovery — applied to the block above, not hand-written
+# into it, so editing WEEKS can't silently drop them.
+# ---------------------------------------------------------------------------
+
+STRENGTH_DAYS = (1, 3)              # Tue, Thu — both quality days
+DOWN_WEEKS = {4, 16}                # W5 and W17 (0-indexed), the two cutbacks
+EASY_PACE_MIN_PER_MI = 7.8          # zone-2 estimate, for duration only
+
+
+def _phase_key(week_index: int) -> str:
+    """Houston's four phases mapped onto the repo-wide phase vocabulary."""
+    if week_index < 7:
+        return "base"
+    if week_index < 13:
+        return "build"
+    if week_index < 21:
+        return "specific"
+    return "taper"
+
+
+def is_race_week(days: dict[int, WorkoutSpec]) -> bool:
+    return any(spec.name.startswith("RACE —") for spec in days.values())
+
+
+def session_minutes(spec: WorkoutSpec) -> int:
+    """Rough session duration, for sizing the fuelling note."""
+    total_s = 0.0
+
+    def walk(items, mult: int = 1) -> None:
+        nonlocal total_s
+        for item in items:
+            if isinstance(item, RepeatSpec):
+                walk(item.steps, mult * item.repeat)
+                continue
+            kind, value = parse_duration(item.duration)
+            total_s += mult * (
+                value if kind == "time"
+                else (value / M_PER_MILE) * EASY_PACE_MIN_PER_MI * 60
+            )
+
+    walk(spec.steps)
+    return max(15, round(total_s / 60))
+
+
+def session_kind(spec: WorkoutSpec) -> tuple[str, bool]:
+    """(fuelling kind, is_hard) for a run spec, from its name."""
+    name = spec.name
+    if name.startswith("RACE —"):
+        return "race", True
+    if name.startswith("Long"):
+        return "long", True
+    if name.startswith(("Easy", "Shakeout", "Pre-race")):
+        return "easy", False
+    return "quality", True
+
+
+def fuelled(spec: WorkoutSpec) -> WorkoutSpec:
+    """Copy of `spec` with fuelling + recovery appended to its description."""
+    kind, hard = session_kind(spec)
+    return spec.model_copy(update={
+        "description": annotate(spec.description, kind, session_minutes(spec),
+                                hard=hard),
+    })
+
+
+def weekly_briefs() -> list[dict]:
+    """Per-week nutrition / hydration / recovery block for the whole build."""
+    out = []
+    for w, days in enumerate(WEEKS):
+        race = is_race_week(days)
+        down = w in DOWN_WEEKS
+        miles = sum(
+            session_minutes(s) / EASY_PACE_MIN_PER_MI for s in days.values()
+        )
+        out.append({
+            "week": w + 1,
+            "phase": phase_of(w),
+            "race_week": race,
+            "down_week": down,
+            "approx_miles": round(miles, 1),
+            "strength_sessions": [
+                s.name for s in strength_for_week(_phase_key(w), down_week=down,
+                                                  race_week=race)
+            ],
+            "brief": weekly_brief(_phase_key(w), miles, down_week=down,
+                                  race_week=race),
+        })
+    return out
+
 
 def build_plan(start: date | None = None) -> TrainingPlan:
     """Expand the block into a TrainingPlan of (ISO date, WorkoutSpec) items.
@@ -337,11 +442,21 @@ def build_plan(start: date | None = None) -> TrainingPlan:
     monday = start or BLOCK_START
     if monday.weekday() != 0:
         raise ValueError(f"start must be a Monday, got {monday} ({monday:%A})")
-    items: list[tuple[str, WorkoutSpec]] = []
+    items: list[tuple[str, object]] = []
     for w, days in enumerate(WEEKS):
         for dow, spec in sorted(days.items()):
             iso = (monday + timedelta(days=w * 7 + dow)).isoformat()
-            items.append((iso, spec))
+            items.append((iso, fuelled(spec)))
+
+        # Two strength sessions, every week, on the quality days. Race weeks
+        # get the mobility reset only — strength_for_week returns one spec.
+        lifts = strength_for_week(_phase_key(w), down_week=w in DOWN_WEEKS,
+                                  race_week=is_race_week(days))
+        for dow, lift in zip(STRENGTH_DAYS, lifts):
+            iso = (monday + timedelta(days=w * 7 + dow)).isoformat()
+            items.append((iso, lift))
+
+    items.sort(key=lambda pair: pair[0])
     return TrainingPlan(name=PLAN_NAME, items=items)
 
 
