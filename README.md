@@ -98,12 +98,82 @@ or wrong tokens get a `401`.
 | `get_activity` | read | Full detail for one activity |
 | `get_athlete_zones` | read | Heart-rate zones / settings |
 | `list_scheduled` | read | Workouts on the calendar |
+| `assess_fitness` | read | Summarise recent training; size the gap to a goal time |
+| `list_marathons` | read | Marathons in the catalogue inside a date window |
+| `pick_random_marathon` | read | "Surprise me" — draw a race to train for |
 | `create_workout` | write | Build a structured workout from a spec; optionally schedule |
+| `create_strength_workout` | write | Build a guided strength/core session |
 | `schedule_workout` | write | Put an existing workout on a date |
 | `delete_workout` | write | Delete a workout template |
 | `unschedule_workout` | write | Remove a calendar occurrence |
 | `create_training_plan` | write | Build + schedule a whole multi-week plan |
-| `create_boulderthon_demo` | write | A bundled 13-week example plan |
+| `create_marathon_plan` | plan | Any race, any goal — built from your actual fitness |
+| `create_hs_track_plan` | plan | High-school 800 / 1600 / 3200 / 5K blocks |
+| `create_houston_block` | plan | The bundled 24-week Chevron Houston build |
+| `clear_scheduled` | plan | Wipe a date range off the calendar (dry-run first) |
+
+Every plan-building tool schedules **two strength/core sessions a week** and
+returns per-week nutrition, hydration and recovery guidance with the schedule.
+
+## Training plans
+
+### Marathon — any race, any goal, scaled to you
+
+`create_marathon_plan` doesn't hand out a generic 16-week template. It reads
+your recent Garmin activities, works out where you actually are (weekly mileage,
+longest run, run frequency, best recent effort), and compares that to what the
+goal time demands:
+
+```
+"Pick me a random marathon at least 20 weeks out and build me a 3:15 plan."
+  → pick_random_marathon → assess_fitness → create_marathon_plan
+```
+
+- **Gap analysis.** A 3:15 marathon wants a ~50 mpw peak. If you're running 18
+  and the race is 14 weeks out, an 8%/week ramp doesn't get you there — so the
+  plan is built toward the goal the runway *does* support, and the report states
+  plainly what the original goal would have needed. `force_goal=True` overrides
+  this if you want it anyway.
+- **Paces follow fitness, not the goal.** Base and build phases are paced off
+  current fitness and converge on goal pace in the specific phase, so week 1
+  isn't paced at week-20 fitness.
+- **Structure.** 3-up-1-down cycles, a 3-week taper, long-run progression capped
+  against current longest, and `heat_penalty_s_per_mile` (25–40 for a Gulf Coast
+  summer) to soften early quality paces.
+
+The race catalogue resolves each marathon's *next* running from its scheduling
+rule (Boston = Patriots' Day, Berlin = last Sunday in September, …) and returns a
+`date_certainty` flag — always confirm with the organiser before booking.
+
+### High-school track — the four barriers
+
+`create_hs_track_plan` builds toward **sub-2:00 800**, **sub-4:30 1600**,
+**sub-10:00 3200** and **sub-15:00 5K** (or any goal you pass):
+
+- `training_age` (`new` / `developing` / `experienced`) sets a hard weekly
+  mileage ceiling; Sunday is a full rest day in every week; no doubles are ever
+  scheduled; quality is capped at two sessions plus a meet.
+- Supply `current_pr` and the gap analysis is honest: if sub-4:30 off a 5:05 PR
+  is a two-season project, it says so and builds toward the PR this season can
+  actually deliver.
+- Nutrition guidance at this level is **adequacy-only** — eat enough, eat often,
+  no calorie counts, no weight targets, no body-composition talk.
+- The plan is a starting point to bring to the athlete's actual coach, not a
+  replacement for one.
+
+### Strength, nutrition and recovery — in every plan
+
+- **2×/week strength**, scheduled on quality days so easy days stay easy and
+  nothing lands the day before a long run. Day A is posterior chain (RDL, split
+  squat, single-leg calf raise, row) plus anti-extension core; Day B is
+  hip/pelvis control plus anti-rotation core. Down and race weeks swap the heavy
+  day for a mobility reset — the habit never breaks, the load does. Dumbbells and
+  a band are enough.
+- **Fuelling and recovery per session.** Each workout's description carries its
+  own fuel note (carbs/hour on a long run, protein window after a lift) and a
+  recovery line, so the guidance is on the watch, not in a doc you never open.
+- **Weekly brief.** Carbohydrate, protein, fat, timing, iron, hydration, sleep
+  and load-watch guidance per week, returned with the plan.
 
 ## Workout spec
 
@@ -124,18 +194,20 @@ WorkoutSpec(name="4x1mi threshold", steps=[
 - **Targets:** `null` · `"hr:2"` (HR zone) · `"pace:6:35-6:55"` (pace window, min/mi)
 
 Everything compiles to Garmin's exact `workout-service` JSON schema (validated
-against `garminconnect` 0.3.6).
+against `garminconnect` 0.3.7).
 
 ## Example: a full marathon block
 
-`plans/boulderthon.py` is a complete 13-week marathon build expressed in this
-spec — pace-targeted quality sessions, HR-zone easy/long runs, down weeks, two
-20-milers, a marathon-pace rehearsal, and a taper. It's the worked example that
-proves the plan engine. Dry-run it without touching Garmin:
+`plans/houston.py` is a complete 24-week Chevron Houston Marathon build
+expressed in this spec — pace-targeted quality sessions with a Houston heat
+allowance, HR-capped easy and long runs, eight real tune-up races on their
+actual dates, down weeks, a 30K dress rehearsal, two strength days a week, and a
+taper. It's the worked example that proves the plan engine. Dry-run it without
+touching Garmin:
 
 ```bash
-python -c "from plans.boulderthon import build_plan; from garmin_mcp.plans import preview_plan; \
-[print(r['date'], r['name']) for r in preview_plan(build_plan())]"
+python -c "from plans.houston import build_plan; from garmin_mcp.plans import preview_plan; \
+[print(r['date'], r['sport'], r['name']) for r in preview_plan(build_plan())]"
 ```
 
 Write your own plan the same way: a list of `(date, WorkoutSpec)` via the
@@ -150,12 +222,19 @@ Write your own plan the same way: a list of `(date, WorkoutSpec)` via the
 garmin-mcp/
 ├── src/garmin_mcp/
 │   ├── server.py      FastMCP app + tools
-│   ├── workouts.py    spec models + validated Garmin compiler
-│   ├── plans.py       plan engine (week() helper, push/preview)
+│   ├── workouts.py    running spec models + validated Garmin compiler
+│   ├── strength.py    strength/core specs + compiler + the 2x/week prescription
+│   ├── fitness.py     fitness snapshot, Riegel paces, gap analysis, mileage ramp
+│   ├── fueling.py     per-session fuel/recovery notes + weekly nutrition briefs
+│   ├── plans.py       plan engine (week() helper, push/preview, mixed sports)
 │   ├── auth.py        garth login + token cache + MFA
 │   ├── http_auth.py   bearer-token gate for the HTTP transport
 │   └── cli.py         garmin-mcp-auth
-├── plans/boulderthon.py   example 13-week build as data
+├── plans/
+│   ├── marathon.py    fitness-scaled marathon generator (any race, any goal)
+│   ├── track_hs.py    high-school 800/1600/3200/5K generator
+│   ├── races.py       marathon catalogue with date rules
+│   └── houston.py     worked example: 24-week Houston build as data
 ├── examples/          Claude Desktop config
 ├── tests/             offline build/serialize/auth tests (CI-safe, no network)
 ├── Dockerfile · railway.toml   remote deploy
