@@ -6,6 +6,15 @@
 
 > Replace `OWNER` in the badge and clone URLs with your GitHub username.
 
+> **Status: no longer actively maintained (November 2026).** I've moved from
+> Garmin to Apple Watch and no longer have a Garmin account, so this project
+> isn't being tested against live Garmin Connect any more. The code works with
+> **your own** Garmin account when you self-host it (see Quick start), but it
+> relies on Garmin's unofficial login, which can change without notice — if it
+> breaks, I can't reproduce or verify a fix. There is no shared hosted server.
+> Active work has moved to the Apple Watch counterpart,
+> [mcp-apple-workouts](https://github.com/yashhooda1/mcp-apple-workouts).
+
 An [MCP](https://modelcontextprotocol.io) server that lets an AI assistant
 (Claude, or any MCP client) **read your Garmin activities** and **create and
 schedule structured workouts and multi-week training plans** directly on your
