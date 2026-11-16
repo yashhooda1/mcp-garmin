@@ -84,9 +84,39 @@ MCP_AUTH_TOKEN=<openssl rand -hex 32>      # clients must send Authorization: Be
 GARMINTOKENS=/data/.garminconnect          # mount a volume; upload tokens you generated locally
 ```
 
-Without `MCP_AUTH_TOKEN` the server logs a loud warning and stays open — so set
-it. Every HTTP request is checked with a constant-time bearer comparison; missing
-or wrong tokens get a `401`.
+Without `MCP_AUTH_TOKEN`, a publicly bound HTTP server now refuses to
+start; unauthenticated HTTP is permitted only on loopback for local development.
+Every private MCP request requires a valid bearer token; missing or wrong tokens
+get a `401`.
+
+---
+
+## OpenAI and ChatGPT
+
+Garmin MCP uses standard MCP, so the same Garmin tools work with **Claude,
+OpenAI Agents SDK, the OpenAI Responses API, and eligible ChatGPT custom MCP
+plugins**. Nothing in the Claude workflow is removed.
+
+- **OpenAI Agents SDK (local stdio):** see
+  [`examples/openai_agents_local.py`](examples/openai_agents_local.py).
+  The example exposes read-only Garmin tools only.
+- **OpenAI Responses API (remote HTTP):** see
+  [`examples/openai_responses_remote.py`](examples/openai_responses_remote.py).
+  It uses `OPENAI_MODEL=gpt-6.1-sol` by default, requires HTTPS and a bearer
+  token, and requires approval for every MCP tool call.
+- **ChatGPT remote MCP plugin:** set `PUBLIC_BASE_URL=https://your-host`,
+  `MCP_AUTH_TOKEN`, `OAUTH_OWNER_PASSWORD` and persistent `OAUTH_STATE_DIR`.
+  Then connect `https://your-host/mcp` via an eligible ChatGPT workspace.
+  The built-in OAuth 2.1 endpoints support discovery, dynamic client
+  registration, PKCE S256, and rotating refresh tokens.
+
+**[Full setup, security caveats and current model instructions](docs/openai-chatgpt.md)**
+
+Important: ChatGPT web requires a remote HTTPS MCP endpoint or supported Secure
+MCP Tunnel; it cannot directly start a local stdio process. These capabilities
+require the necessary ChatGPT workspace access and deployment, and are not
+proof of a live account connection. The Garmin account is **single-owner**:
+a connected client could alter your workouts if you approve write tools.
 
 ---
 

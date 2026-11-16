@@ -10,7 +10,7 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [{ name = "Yash Hooda" }]
-keywords = ["mcp", "garmin", "running", "training", "workouts", "claude"]
+keywords = ["mcp", "garmin", "running", "training", "workouts", "claude", "openai", "chatgpt"]
 dependencies = [
     "mcp>=1.2,<2",
     # 0.3.7 is the floor: StrengthWorkout, the strength step builders and the
@@ -18,6 +18,7 @@ dependencies = [
     "garminconnect>=0.3.7",
     "garth>=0.4.45",
     "pydantic>=2.0",
+    "starlette>=0.27",
 ]
 
 [project.optional-dependencies]

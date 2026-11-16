@@ -10,3 +10,10 @@ restartPolicyType = "ON_FAILURE"
 #   GARMINTOKENS=/data/.garminconnect   (attach a volume at /data)
 # Generate tokens locally with `garmin-mcp-auth`, then upload the token files
 # to the volume — never bake credentials into the image.
+
+# Optional: enable OAuth login for ChatGPT custom MCP connectors:
+#   MCP_AUTH_TOKEN=<openssl rand -hex 32>  (REQUIRED for public HTTP)
+#   PUBLIC_BASE_URL=https://<your-app>.up.railway.app
+#   OAUTH_OWNER_PASSWORD=<unique-long-password>
+#   OAUTH_STATE_DIR=/data/oauth  (same persistent private volume)
+# See docs/openai-chatgpt.md. Never store these values in git.
