@@ -27,6 +27,7 @@ from .plans import preview_plan, push_plan
 from .strength import StrengthSpec, compile_strength
 from .workouts import WorkoutSpec, compile_workout
 
+
 def _transport_security():
     """Allow the configured HTTPS hostname without disabling the SDK host check."""
     base = os.environ.get("PUBLIC_BASE_URL")
