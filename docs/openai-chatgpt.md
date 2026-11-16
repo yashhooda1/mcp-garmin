@@ -14,8 +14,8 @@ python examples/openai_agents_local.py
 ```
 
 The example only grants **read** tools. It does not allow the agent to
-schedule, replace, or delete anything. Use `OPENAI_MODEL` in your own Agents SDK
-app to select a supported model. This example uses the SDK's default model.
+schedule, replace, or delete anything. Set `OPENAI_MODEL` to select a supported model; the example defaults to
+`gpt-6.1-sol`.
 
 ## 2. OpenAI Responses API — remote Streamable HTTP
 
