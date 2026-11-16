@@ -26,6 +26,7 @@ async def main() -> None:
     ) as server:
         agent = Agent(
             name="Garmin training assistant",
+            model=os.getenv("OPENAI_MODEL", "gpt-6.1-sol"),
             instructions=(
                 "Use the Garmin MCP tools only to read the runner's history and calendar. "
                 "Do not claim to have modified workouts or scheduled anything."
