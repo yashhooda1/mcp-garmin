@@ -84,9 +84,10 @@ MCP_AUTH_TOKEN=<openssl rand -hex 32>      # clients must send Authorization: Be
 GARMINTOKENS=/data/.garminconnect          # mount a volume; upload tokens you generated locally
 ```
 
-Without `MCP_AUTH_TOKEN` the server logs a loud warning and stays open — so set
-it. Every HTTP request is checked with a constant-time bearer comparison; missing
-or wrong tokens get a `401`.
+Without `MCP_AUTH_TOKEN`, a publicly bound HTTP server now refuses to
+start; unauthenticated HTTP is permitted only on loopback for local development.
+Every private MCP request requires a valid bearer token; missing or wrong tokens
+get a `401`.
 
 ---
 
