@@ -27,7 +27,32 @@ from .plans import preview_plan, push_plan
 from .strength import StrengthSpec, compile_strength
 from .workouts import WorkoutSpec, compile_workout
 
-mcp = FastMCP("garmin-mcp")
+def _transport_security():
+    """Allow the configured HTTPS hostname without disabling the SDK host check."""
+    base = os.environ.get("PUBLIC_BASE_URL")
+    if not base or os.environ.get("TRANSPORT") not in ("sse", "streamable-http"):
+        return None
+    from urllib.parse import urlparse
+
+    host = urlparse(base).hostname
+    if not host:
+        raise ValueError("PUBLIC_BASE_URL must contain a hostname")
+    try:
+        from mcp.server.transport_security import TransportSecuritySettings
+    except ImportError:  # Older SDKs did not have this option
+        return None
+    return TransportSecuritySettings(
+        allowed_hosts=[host, f"{host}:*", "localhost", "localhost:*",
+                       "127.0.0.1", "127.0.0.1:*"],
+        allowed_origins=["https://chatgpt.com", "https://chat.openai.com",
+                         "https://claude.ai", "https://claude.com",
+                         f"https://{host}"],
+    )
+
+
+_security = _transport_security()
+mcp = FastMCP("garmin-mcp",
+              **({"transport_security": _security} if _security else {}))
 
 
 # --------------------------------------------------------------------------- #
